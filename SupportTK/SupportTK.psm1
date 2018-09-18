@@ -53,8 +53,8 @@ Function Test-EnvPath { # Determines directory on the path wherein the specified
 
 Function New-TempDir { # Creates sub directory with random name within temp folder on SYSTEMDRIVE. 
 
-    $parent = [System.IO.Path]::GetTempPath()
-    $filename = [System.IO.Path]::GetRandomFileName()
+    $parent     = [System.IO.Path]::GetTempPath()
+    $filename   = [System.IO.Path]::GetRandomFileName()
     $newtempdir = Join-Path $parent $filename
     New-Item -ItemType Directory -Path $newtempdir
     
@@ -302,16 +302,91 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
 }; Set-Alias flock Get-LockedFile -Description "Displays applications with opened or locked files in local file system."
 
 
-Function Get-WinVersion { # Identifies Windows Operating System: Maj.Min.Build.Release.Update
+Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Release.Update
 
+    [CmdletBinding(DefaultParameterSetName="Version")]
+    Param(
+        [Parameter(ParameterSetName='MajorNo',Position=0,Mandatory=$False)][SWITCH]$Major,
+        [Parameter(ParameterSetName='MinorNo',Position=0,Mandatory=$False)][SWITCH]$Minor,
+        [Parameter(ParameterSetName='BuildNo',Position=0,Mandatory=$False)][SWITCH]$Build,
+        [Parameter(ParameterSetName='RevisionNo',Position=0,Mandatory=$False)][SWITCH]$Revision,
+        [Parameter(ParameterSetName='ReleaseID',Position=0,Mandatory=$False)][SWITCH]$Release,
+        [Parameter(ParameterSetName='Role',Position=0,Mandatory=$False)][SWITCH]$Role,
+        [Parameter(ParameterSetName='Product',Position=0,Mandatory=$False)][SWITCH]$Product,
+        [Parameter(ParameterSetName='Version',Position=0,Mandatory=$False)][SWITCH]$Version,
+        [Parameter(ParameterSetName='Serial',Position=0,Mandatory=$False)][SWITCH]$SerialNumber,
+        [Parameter(ParameterSetName='Up',Position=0,Mandatory=$False)][SWITCH]$Uptime
+    )
+
+    Begin {
+        
+        $w32OS = Get-CimInstance -ClassName win32_operatingsystem -EA 0
+        
+        $Ver = $w32OS.Version.ToString().Split(".");
+        $UBR = [STRING](Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion' UBR).UBR
+        $objVersion = New-Object -typename System.Version $Ver[0],$Ver[1],$Ver[2],$UBR;
+        $strVersion = $w32OS.Version + "." + $UBR
+
+        $DomainRole = @{
+            0 = "Standalone Workstation" ;
+            1 = "Member Workstation" ;
+            2 = "Standalone Server" ;
+            3 = "Member Server" ;
+            4 = "Backup Domain Controller" ;
+            5 = "Primary Domain Controller" 
+        } 
+
+    }
+    Process{
+        
+        switch($PSCmdlet.ParameterSetName){
+            
+            "MajorNo"    { $objVersion.Major.ToString(); Break; }
+
+            "MinorNo"    { $objVersion.Minor.ToString(); Break; }
+
+            "BuildNo"    { $objVersion.Build.ToString(); Break; }
+
+            "Product"    { $w32OS.Caption; Break; }
+
+            "RevisionNo" { $objVersion.Revision.ToString(); Break; }
+
+            "ReleaseID"  { (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ReleaseId).ReleaseId
+                           Break; 
+                         }
+
+            "Role"       { $w32CS = Get-CimInstance -ClassName win32_computersystem -EA 0; 
+                           $DomainRole[[int]$w32CS.DomainRole]; 
+                           Break; 
+                         }
+
+            "Serial"     { $w32OS.SerialNumber; Break; }
+
+            "Up"         { $when = $w32OS.LastBootUpTime.GetDateTimeFormats()[112];
+                           $T = (Get-Date).Subtract($w32OS.LastBootUpTime);
+                           $U = $T.Subtract($T.Days); 
+                           " $When up $($T.Days) days, $($U.Hours)`:$($U.Minutes)"; 
+                           Break; 
+                         }
+
+            "Version"    { $strVersion; Break; }
+            
+            Default      { $objVersion }
+
+        }
+    }
+    End{}
+
+    
     <#
 
         .SYNOPSIS
-        Displays the Windows Operating System number format: Maj.Min.Build.Release.UBR
+        Displays the Windows Operating System number format: Major.Minor.Build.Revision
 
         .DESCRIPTION
-        Displays the Windows Operating System numbers: Major Version, Minor Version, 
-        Build Number, Release Number and Update (aka UBR: Updated Build Release Identification Number).
+        Displays version of Windows Operating System: Major Version, Minor Version, 
+        Build Number, Revision Number. Can also return the semi-annual Release ID. 
+        N.B. The revision number reflects the UBR (Updated Build Release Identification Number).
 
         .INPUTS
         This cmdlet accepts no pipeline input
@@ -321,21 +396,11 @@ Function Get-WinVersion { # Identifies Windows Operating System: Maj.Min.Build.R
 
         .EXAMPLE
         Get-WinVersion
-        On Windows 10 released April 2018, this command returned "10.0.17134.1803.228"
+        On Windows 10 released April 2018, this command returned "10.0.17134.228"
 
     #>
 
-    $VersionBuild = (Get-CimInstance -ClassName win32_operatingsystem -EA 0).Version.ToString()
-
-    $ReleaseID = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ReleaseId).ReleaseId
-
-    $UBRID = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion' UBR).UBR
-
-    $CompleteVersion = "$VersionBuild`.$ReleaseID`.$UBRID" 
-
-    $CompleteVersion
-
-}; Set-Alias winversion Get-WinVersion -Description "Identifies Windows Operating System: Maj.Min.Build.Release.Update."
+}; Set-Alias version Get-Windows -Description "Identifies Windows Operating System: Maj.Min.Build.Release.Update."
 
 
 
