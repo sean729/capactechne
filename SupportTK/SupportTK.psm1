@@ -313,19 +313,23 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
         [Parameter(ParameterSetName='ReleaseID',Position=0,Mandatory=$False)][SWITCH]$Release,
         [Parameter(ParameterSetName='Role',Position=0,Mandatory=$False)][SWITCH]$Role,
         [Parameter(ParameterSetName='Product',Position=0,Mandatory=$False)][SWITCH]$Product,
-        [Parameter(ParameterSetName='Version',Position=0,Mandatory=$False)][SWITCH]$Version,
+        [Parameter(ParameterSetName='ProductVer',Position=0,Mandatory=$False)][SWITCH]$ProductVersion,
+        [Parameter(ParameterSetName='VersionObj',Position=0,Mandatory=$False)][SWITCH]$Version,
         [Parameter(ParameterSetName='Serial',Position=0,Mandatory=$False)][SWITCH]$SerialNumber,
         [Parameter(ParameterSetName='Up',Position=0,Mandatory=$False)][SWITCH]$Uptime
     )
 
     Begin {
         
-        $w32OS = Get-CimInstance -ClassName win32_operatingsystem -EA 0
-        
+        $w32OS = Get-CimInstance -ClassName win32_operatingsystem -EA 0;
+        $UBR = [STRING](Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion" UBR).UBR
+        $ReleaseId = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ReleaseId).ReleaseId;
+
         $Ver = $w32OS.Version.ToString().Split(".");
-        $UBR = [STRING](Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion' UBR).UBR
-        $objVersion = New-Object -typename System.Version $Ver[0],$Ver[1],$Ver[2],$UBR;
-        $strVersion = $w32OS.Version + "." + $UBR
+        $Ver += $UBR;
+
+        $objVersion = New-Object -typename System.Version $Ver;
+        $strVersion = $Ver -Join "."
 
         $DomainRole = @{
             0 = "Standalone Workstation" ;
@@ -341,37 +345,37 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
         
         switch($PSCmdlet.ParameterSetName){
             
-            "MajorNo"    { $objVersion.Major.ToString(); Break; }
+            "MajorNo"   { $objVersion.Major; Break; }
 
-            "MinorNo"    { $objVersion.Minor.ToString(); Break; }
+            "MinorNo"   { $objVersion.Minor; Break; }
 
-            "BuildNo"    { $objVersion.Build.ToString(); Break; }
+            "BuildNo"   { $objVersion.Build; Break; }
 
-            "Product"    { $w32OS.Caption; Break; }
+            "Product"   { $w32OS.Caption; Break; }
 
-            "RevisionNo" { $objVersion.Revision.ToString(); Break; }
+            "ProductVer"{ "$($w32OS.Caption), Release $ReleaseID [Build $($Ver[2])`.$UBR]"; Break; }
 
-            "ReleaseID"  { (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ReleaseId).ReleaseId
-                           Break; 
-                         }
+            "RevisionNo"{ $objVersion.Revision; Break; }
 
-            "Role"       { $w32CS = Get-CimInstance -ClassName win32_computersystem -EA 0; 
-                           $DomainRole[[int]$w32CS.DomainRole]; 
-                           Break; 
-                         }
+            "ReleaseID" { $ReleaseId; Break; }
 
-            "Serial"     { $w32OS.SerialNumber; Break; }
+            "Role"      { $w32CS = Get-CimInstance -ClassName win32_computersystem -EA 0; 
+                            $DomainRole[[int]$w32CS.DomainRole]; 
+                            Break; 
+                        }
 
-            "Up"         { $when = $w32OS.LastBootUpTime.GetDateTimeFormats()[112];
-                           $T = (Get-Date).Subtract($w32OS.LastBootUpTime);
-                           $U = $T.Subtract($T.Days); 
-                           " $When up $($T.Days) days, $($U.Hours)`:$($U.Minutes)"; 
-                           Break; 
-                         }
+            "Serial"    { $w32OS.SerialNumber; Break; }
 
-            "Version"    { $strVersion; Break; }
+            "Up"        { $when = $w32OS.LastBootUpTime.GetDateTimeFormats()[112];
+                            $T = (Get-Date).Subtract($w32OS.LastBootUpTime);
+                            $U = $T.Subtract($T.Days); 
+                            "$($w32OS.CSName.ToLower()) $When up $($T.Days) days, $($U.Hours)`:$($U.Minutes)"; 
+                            Break; 
+                        }
+
+            "VersionObj" { $objVersion; Break; }
             
-            Default      { $objVersion }
+            Default      { $strVersion }
 
         }
     }
@@ -395,8 +399,32 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
         The four-part version number of Windows OS.
 
         .EXAMPLE
-        Get-WinVersion
-        On Windows 10 released April 2018, this command returned "10.0.17134.228"
+        Get-Windows -ProductVersion
+        Microsoft Windows 10 Home, Release 1803 [Build 17134.285]
+
+        .EXAMPLE
+        Get-Windows -Version
+        10.0.17134.285
+
+        .EXAMPLE
+        Get-Windows -Release
+        1803
+
+        .EXAMPLE
+        Get-Windows -Role
+        Standalone Workstation
+
+        .EXAMPLE
+        Get-Windows -Product
+        Microsoft Windows 10 Home
+
+        .EXAMPLE
+        Get-Windows -SerialNumber
+        000000-00000-00000-AAOEM
+
+        .EXAMPLE
+        Get-Windows -Uptime
+        15:31:19 up 0 days, 10:12
 
     #>
 
