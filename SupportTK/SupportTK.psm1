@@ -13,7 +13,7 @@
     Contributors: 
     Created     : 2018-08-22
     Updated     : 2018-09-16
-    Version     : 0.8
+    Version     : 0.9
     2018-09-16  : tech support adv functions Get-EnvPath, Test-EnvPath, New-TempDir, Get-TempDir
 
 #>
@@ -135,7 +135,7 @@ Function Get-TempDir { # Returns file object for Temp directory, based on type, 
 }; Set-Alias tmpdir Get-TempDir -Description "Displays location of temp directory."
 
 
-Function Remove-OpenFile { # Place-holder Function
+Function Stop-AppLocking { # Place-holder Function
     [CmdletBinding(DefaultParametersetName="Standard")]
     Param(
         [Parameter(
@@ -144,16 +144,31 @@ Function Remove-OpenFile { # Place-holder Function
             Mandatory=$True,
             ValueFromPipeline=$True
         )]
-        [STRING]$ID
+        [STRING]$ID,
+        [Parameter(
+            ParameterSetName='Standard',
+            Position=1,
+            Mandatory=$True,
+            ValueFromPipeline=$True
+        )]
+        [STRING]$PID,
+        [Parameter(
+            ParameterSetName='Standard',
+            Position=2,
+            Mandatory=$True,
+            ValueFromPipeline=$True
+        )]
+        [STRING]$FilePath        
     )
     
-    # uses stop-process to unlock local bin files
+    # uses 
+    
+    stop-process -ID $PID -force 
 
 }
 
 
 Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock"). 
-    # BTR 
 
     [CmdletBinding(DefaultParametersetName="Standard")]
     Param(
@@ -165,7 +180,7 @@ Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock
         )]
         [STRING]$FilePath,
 
-        [Parameter(ParameterSetName='Standard',Position=1)]
+        [Parameter(ParameterSetName='Standard',Position=1,Mandatory=$True)]
         [STRING]$Cached,
 
         [Parameter(
@@ -173,31 +188,56 @@ Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock
             Position=0,
             Mandatory=$True,
             ValueFromPipeline=$True            
-        )]
+        )][Alias("HandleId")]
         [INT]$ID
     )
 
-    If ( ${cached} -and (-not (Test-Path ${cached})) )  {
-        Remove-Variable cached
+    Begin{
+        If ( ${cached} -and (-not (Test-Path ${cached})) )  {
+            Remove-Variable cached
+            "Cache is missing at $Cached"
+            Break
+        }
     }
+    Process{
+        If ( ${ID} ) {
+            $R = Get-LockedFile -Id ${ID}
+        } 
+        ElseIf ( ${filePath} -and ${cached} ) {
+            $R = Get-LockedFile -filter "${filePath}" -cached "${cached}" #| Format-Table -Property ID,FilePath,ProcessName -auto -wrap
+        } 
+        Else {
+            $R = Get-LockedFile -filter "${FilePath}"
+        }
 
-    If ( ${ID} ) {
-        $R = Get-OpenFile -Id ${ID}
-    } 
-    ElseIf ( ${filePath} -and ${cached} ) {
-        $R = Get-OpenFile -filter "${filePath}" -cached "${cached}" #| Format-Table -Property ID,FilePath,ProcessName -auto -wrap
-    } 
-    Else {
-        $R = Get-OpenFile -filter "${FilePath}"
+        $S = @($R.PID)
+        
+        If ($S.Count -eq 1) {
+            
+            $LockingApp = Get-Process -Id $R.PID
+            $LockingApp | Select Name, Id, Product, ProductVersion, Path
+
+            $prompt = Read-Host -Prompt "Terminate process $($LockingApp.ID)`? yes / No";
+            If ($prompt -eq "Yes") {
+                
+                # Stop-AppLocking -id $($R.ID) -Pid $($R.PID) -File "$($R.FilePath)"
+                Write-Information "Waiting to unlock file $($R.FilePath)`. "
+                Stop-Process -Id $R.PId
+                Start-Sleep -s 2
+                Remove-Item $($R.FilePath)
+                if ( -not(Test-Path $($R.FilePath)) ){ Write-Information "Deleted locked file $($R.FilePath)`. " }
+                
+            } 
+            Else {
+                "Selected option 'no'"
+            }
+            
+        } 
+        Else {
+            Write-Error "No single valid file handle found. Handle ${ID} appears $($S.Count) times."
+        }
     }
-
-    If ($R.Count -eq 1) {
-        Remove-OpenFile -id $($R.ID)
-    } 
-    Else {
-        Write-Error "No valid file handle found. Handle ${ID} appears $($R.Count) times."
-    }
-
+    End {}
 }; Set-Alias delflock Remove-TempFile -Description "Displays X."
 
 #deltmp -filepath X
@@ -264,7 +304,7 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
 
             } Else {
 
-                Write-Output "No cache found at ${FileCache}, so scanning operation may take several minutes to complete. `nPlease do not close this session. "
+                Write-Information "No cache found at ${FileCache}, so scanning operation may take several minutes to complete. `nPlease do not close this session. "
                 $TimeResult = Measure-Command -Expression { 
                     ${TextRaw} = openfiles /query /v /fo CSV /nh;
                 } 
@@ -273,7 +313,7 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
 
             }
 
-            ${OpenFiles} = ${TextRaw}[($TextRaw.IndexOf(${StartStr}) + 2) .. ($TextRaw.IndexOf(${EndStr}) -3)] | ConvertFrom-Csv -Header ${Header};
+            $OpenFiles = ${TextRaw}[($TextRaw.IndexOf(${StartStr}) + 2) .. ($TextRaw.IndexOf(${EndStr}) -3)] | ConvertFrom-Csv -Header ${Header};
 
         } 
         Catch {
@@ -283,20 +323,21 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
             Write-Verbose ${Message}
         }
 
+        If ( $ID ) {
+            $OpenFiles | Where-Object { $_.ID -eq "${ID}" } 
+        } ElseIf ( $Filter ) {
+            #$FinalResult = 
+            $OpenFiles | Where-Object { $_.FilePath -Like "*${Pattern}*" }
+        } Else {
+            #$FinalResult = ${OpenFiles}
+            $OpenFiles 
+        }
+
     }
     End{
         
-        If ( $ID ) {
-            ${OpenFiles} |
-                Where-Object { $_.ID -eq "${ID}" } 
-        } ElseIf ( $Filter ) {
-            $FinalResult = ${OpenFiles} |
-                Where-Object { $_.FilePath -Like "*${Pattern}*" }
-        } Else {
-            $FinalResult = ${OpenFiles} 
-        }
 
-        $FinalResult | Format-Table -Property ID,FilePath,PID,ProcessName -auto -wrap
+        #$FinalResult | Format-Table -Property ID,FilePath,PID,ProcessName -auto -wrap
 
     }
 }; Set-Alias flock Get-LockedFile -Description "Displays applications with opened or locked files in local file system."
