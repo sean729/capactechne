@@ -1,6 +1,6 @@
 <# 
     .SYNOPSIS   
-    Tools to enhance technical assistance efforts on Windows Desktops.
+    Tools to enhance technical assistance efforts for Windows Desktops.
 
     .DESCRIPTION 
     Collection of task-based advfuncs oriented to tech support activities and diagnostics.
@@ -12,8 +12,8 @@
     Designer    : Sean Peterson
     Contributors: 
     Created     : 2018-08-22
-    Updated     : 2018-09-16
-    Version     : 0.9
+    Updated     : 2018-09-20
+    Version     : 0.10.6
     2018-09-16  : tech support adv functions Get-EnvPath, Test-EnvPath, New-TempDir, Get-TempDir
 
 #>
@@ -193,6 +193,9 @@ Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock
     )
 
     Begin{
+
+        $InformationPreference = "SilentlyContinue"; 
+
         If ( ${cached} -and (-not (Test-Path ${cached})) )  {
             Remove-Variable cached
             "Cache is missing at $Cached"
@@ -224,12 +227,17 @@ Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock
                 Write-Information "Waiting to unlock file $($R.FilePath)`. "
                 Stop-Process -Id $R.PId
                 Start-Sleep -s 2
-                Remove-Item $($R.FilePath)
-                if ( -not(Test-Path $($R.FilePath)) ){ Write-Information "Deleted locked file $($R.FilePath)`. " }
+                Remove-Item $R.FilePath
+                if ( Test-Path $R.FilePath ){ 
+                    Write-Information "File not deleted, still locked. Try again.";
+                } 
+                Else {
+                    Write-Information "Deleted locked file $($R.FilePath)`. ";
+                }
                 
             } 
             Else {
-                "Selected option 'no'"
+                Write-Information "Selected option 'No' (default)."
             }
             
         } 
@@ -276,20 +284,25 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
             Position=0,
             ValueFromPipeline=$True
         )]
+        [Alias("FilePattern")]
         [STRING]$Filter,
+
         [Parameter(ParameterSetName='Standard',Position=1)]
         [STRING]$Cached,
+
         [Parameter(ParameterSetName='Standard',Position=0)]
+        [Alias("HandleId")]
         [INT]$ID
     )
   
     Begin{
 
+        $InformationPreference = "SlientlyContinue";
         ${FileCache}= ${Cached};
-        ${StartStr} = "Files Opened Locally:"
-        ${EndStr}   = "Files opened remotely via local share points:"
-        ${Header}   = "ID","AccessedBy","PID","ProcessName","FilePath"
-        ${Pattern}  = $Filter 
+        ${StartStr} = "Files Opened Locally:";
+        ${EndStr}   = "Files opened remotely via local share points:";
+        ${Header}   = "ID","AccessedBy","PID","ProcessName","FilePath";
+        ${Pattern}  = $Filter; 
 
     }
     Process{
@@ -378,7 +391,8 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
             2 = "Standalone Server" ;
             3 = "Member Server" ;
             4 = "Backup Domain Controller" ;
-            5 = "Primary Domain Controller" 
+            5 = "Primary Domain Controller" ;
+            6 = "Read-Only Domain Controller" 
         } 
 
     }
