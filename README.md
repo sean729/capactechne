@@ -1,7 +1,9 @@
 Windows Support Tool Kit
 ========================
 
-This is the authoritative repository for SupportTK, the Support Tool Kit, PowerShell that assists technical support engineers. 
+[Capac Techne IT Services](https://www.facebook.com/pg/Capac-Techne-Servicios-Informatico-253256362049018) brings you SupportTK, the Support Tool Kit Powershell v5 module, to assist technical support engineers in various efforts, from data gathering, to diagnosis and remediation steps. 
+
+
 
 Advanced Functions
 ------------------
@@ -11,8 +13,7 @@ Advanced Functions
 - Get-TempDir: Returns file object for Temp directory, based on type, and basic statistics.
 - Get-Windows: Identifies Windows Operating System: Maj.Min.Build.Release and Update Numbers
 - New-TempDir: Creates sub directory with random name within temp folder on SYSTEMDRIVE.
-- Remove-AppLock: Place-holder Function
-- Remove-LockedFile: Safely removes lock and deletes a file.
+- Remove-LockedFile: Closes application holding locked file, then deletes the file.
 - Enable-LockedFile: Controls the 'maintain objects list' so openfile can track handles.
 - Test-EnvPath: Determines directory on the path wherein the specified file resides.
 
@@ -21,6 +22,7 @@ Package Requirement
 -------------------
 
 Windows PowerShell 4.0 or higher
+openfiles.exe (Windows 8 or higher)
 
 
 License
