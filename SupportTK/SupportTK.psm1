@@ -12,15 +12,35 @@
     Designer    : Sean Peterson
     Contributors: 
     Created     : 2018-08-22
-    Updated     : 2018-09-20
-    Version     : 0.10.6
-    2018-09-16  : tech support adv functions Get-EnvPath, Test-EnvPath, New-TempDir, Get-TempDir
+    Updated     : 2018-10-13
+    Version     : 0.10.7
+    2018-10-17  : Added function to Get-Patch to list hotfixes installed in the last 45 days
 
 #>
 
+Function Get-Patch { # Displays installed patches (hotfixes).
+	[CmdletBinding(DefaultParametersetName="Standard")]
+	Param(
+      [Parameter(ParameterSetName='Standard',Position=0)]
+      [Alias("C","Days")]
+      [STRING]$CutOff = 45,
+      
+      [Parameter(ParameterSetName='Standard',Position=1)]
+      [ValidateSet('InstalledOn','Name')]
+      [Alias("S","SortOn")]
+      [STRING]$SortBy = "Installed"
+    ) 
+ 
+    if ($SortBy -eq "Name") {$SortBy = "HostfixID"}
+    Get-Hotfix | Where {$_.InstalledOn -gt $(Get-Date).AddDays(-${cutoff})} | Sort-Object -Property $SortBy
+}
+Set-Alias showpatch Get-Patch -Description "Displays installed patches (hotfixes)."  
+
+
 Function Get-EnvPath { # Displays directories, one per line, declared in user's path environment variable.
     $env:Path.Split(';')
-}; Set-Alias showpath Get-EnvPath -Description "Displays the directories, one per line, of the path."  
+}
+Set-Alias showpath Get-EnvPath -Description "Displays the directories, one per line, of the path."  
 
 
 Function Test-EnvPath { # Determines directory on the path wherein the specified file resides. 
@@ -47,8 +67,8 @@ Function Test-EnvPath { # Determines directory on the path wherein the specified
 
         }
     }
-
-}; Set-Alias which Test-EnvPath -Description "Determines where in the path the specified file resides."  
+}
+Set-Alias which Test-EnvPath -Description "Determines where in the path the specified file resides."  
 
 
 Function New-TempDir { # Creates sub directory with random name within temp folder on SYSTEMDRIVE. 
@@ -58,7 +78,8 @@ Function New-TempDir { # Creates sub directory with random name within temp fold
     $newtempdir = Join-Path $parent $filename
     New-Item -ItemType Directory -Path $newtempdir
     
-}; Set-Alias mktmpdir New-TempDir -Description "Creates sub directory with random name in temp folder."  
+}
+Set-Alias mktmpdir New-TempDir -Description "Creates sub directory with random name in temp folder."  
 
 
 Function Get-TempDir { # Returns file object for Temp directory, based on type, and basic statistics.
@@ -132,7 +153,8 @@ Function Get-TempDir { # Returns file object for Temp directory, based on type, 
     }
     End {}
 
-}; Set-Alias tmpdir Get-TempDir -Description "Displays location of temp directory."
+}
+Set-Alias tmpdir Get-TempDir -Description "Displays location of temp directory."
 
 
 Function Stop-AppLocking { # Place-holder Function
@@ -246,7 +268,9 @@ Function Remove-LockedFile { # Safely removes lock and deletes a file ("delflock
         }
     }
     End {}
-}; Set-Alias delflock Remove-TempFile -Description "Displays X."
+
+}
+Set-Alias delflock Remove-TempFile -Description "Displays X."
 
 #deltmp -filepath X
 
@@ -273,7 +297,8 @@ Function Enable-LockedFile { # Controls the 'maintain objects list' so openfile 
         Write-Verbose "$message"
     }
 
-}; Set-Alias trackflock Set-OpenFile -Description "Controls the 'maintain objects list' so openfile can track."
+}
+Set-Alias trackflock Set-OpenFile -Description "Controls the 'maintain objects list' so openfile can track."
 
 
 Function Get-LockedFile { # Displays applications with opened or locked files in local file system.
@@ -348,29 +373,28 @@ Function Get-LockedFile { # Displays applications with opened or locked files in
 
     }
     End{
-        
-
         #$FinalResult | Format-Table -Property ID,FilePath,PID,ProcessName -auto -wrap
-
     }
-}; Set-Alias flock Get-LockedFile -Description "Displays applications with opened or locked files in local file system."
+
+}
+Set-Alias flock Get-LockedFile -Description "Displays applications with opened or locked files in local file system."
 
 
 Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Release.Update
 
     [CmdletBinding(DefaultParameterSetName="Version")]
     Param(
-        [Parameter(ParameterSetName='MajorNo',Position=0,Mandatory=$False)][SWITCH]$Major,
-        [Parameter(ParameterSetName='MinorNo',Position=0,Mandatory=$False)][SWITCH]$Minor,
-        [Parameter(ParameterSetName='BuildNo',Position=0,Mandatory=$False)][SWITCH]$Build,
-        [Parameter(ParameterSetName='RevisionNo',Position=0,Mandatory=$False)][SWITCH]$Revision,
-        [Parameter(ParameterSetName='ReleaseID',Position=0,Mandatory=$False)][SWITCH]$Release,
-        [Parameter(ParameterSetName='Role',Position=0,Mandatory=$False)][SWITCH]$Role,
-        [Parameter(ParameterSetName='Product',Position=0,Mandatory=$False)][SWITCH]$Product,
-        [Parameter(ParameterSetName='ProductVer',Position=0,Mandatory=$False)][SWITCH]$ProductVersion,
-        [Parameter(ParameterSetName='VersionObj',Position=0,Mandatory=$False)][SWITCH]$Version,
-        [Parameter(ParameterSetName='Serial',Position=0,Mandatory=$False)][SWITCH]$SerialNumber,
-        [Parameter(ParameterSetName='Up',Position=0,Mandatory=$False)][SWITCH]$Uptime
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='MajorNo')][SWITCH]$Major,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='MinorNo')][SWITCH]$Minor,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='BuildNo')][SWITCH]$Build,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='RevisionNo')][SWITCH]$Revision,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='ReleaseID')][SWITCH]$Release,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='Role')][SWITCH]$Role,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='Product')][SWITCH]$Product,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='ProductVer')][SWITCH]$ProductVersion,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='VersionObj')][SWITCH]$Version,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='Serial')][SWITCH]$SerialNumber,
+        [Parameter(Position=0,Mandatory=$False,ParameterSetName='Up')][SWITCH]$Uptime
     )
 
     Begin {
@@ -391,7 +415,7 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
             2 = "Standalone Server" ;
             3 = "Member Server" ;
             4 = "Backup Domain Controller" ;
-            5 = "Primary Domain Controller" ;
+            5 = "Primary Domain Controller";
             6 = "Read-Only Domain Controller" 
         } 
 
@@ -483,7 +507,8 @@ Function Get-Windows { # Identifies Windows Operating System: Maj.Min.Build.Rele
 
     #>
 
-}; Set-Alias version Get-Windows -Description "Identifies Windows Operating System: Maj.Min.Build.Release.Update."
+}
+Set-Alias version Get-Windows -Description "Identifies Windows Operating System: Maj.Min.Build.Release.Update."
 
 
 
