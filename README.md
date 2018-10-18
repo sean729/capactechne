@@ -6,18 +6,23 @@ Windows Support Tool Kit
 Purpose
 -------
 
-Despite significant improvements in Windows 10 and Windows Server 2016, there still exist gaps in the command-line offering for first tier support, or those who are not well-versed in PowerShell. 
-This toolkit offers functions to collect information quickly, so support staff can devote more time to trouble shooting and diagnosis. Generally, level 1 support doesn't have the mandate or resources to invest in developing a powershell tool kit that covers such use cases. 
+Despite significant improvements in Windows 10 and Windows Server 2016, there are 
+still gaps in command-line tools for 1st tier support, or those who are not well 
+versed in PowerShell. Also, level 1 support teams lack the mandate and resources 
+to develop a powershell library of advanced functions to cover basic use cases. 
 
-SupportTK provides task-based powershell commands for basics like:
+The Support toolkit provides functions to collect information quickly, so support 
+staff can devote more time to trouble shooting and diagnosis. 
 
-- list patches installed
-- determine environment and version details for Windows OS
-- scan Windows Event Log for key entries based on known error IDs 
+SupportTK provides task-based commands for basics like:
+
+- list patches installed (get-patch)
+- determine environment and version details for Windows OS (get-windows)
+- scan Windows Event Log for key entries based on known error IDs (coming soon)
 - determine degree of disk fragmentation
 - folder size and growth
-- determine locked files (& unlock after closing apps)
-- locate multiple copies of exe in the path
+- determine locked files & unlock these by closing app (remove-lockedfile)
+- locate multiple copies of executables in the path
 - isolate DNS issues related to DC and GC servers (coming soon)
 
 
@@ -26,6 +31,7 @@ Advanced Functions
 ------------------
 
 - Get-EnvPath: Displays directories, one per line, declared in user's path environment variable.
+- Get-Patch: Lists hotfixes installed on computer.
 - Get-LockedFile: Displays applications with opened or locked files in local file system.
 - Get-TempDir: Returns file object for Temp directory, based on type, and basic statistics.
 - Get-Windows: Identifies Windows Operating System: Maj.Min.Build.Release and Update Numbers
